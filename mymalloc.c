@@ -10,6 +10,7 @@ static char* memory;
 
 void myinit(int allocAlgo);
 void* mymalloc(size_t size);
+void myfree(void* ptr);
 
 typedef struct memBlock {
 	int free;
@@ -22,7 +23,7 @@ static memBlock* freeHead;
 static memBlock* lastUsed;
 
 int main(int argc, char* argv[]) {
-	myinit(2);
+	myinit(1);
 	int* ptr1 = (int*)mymalloc(12);
 	void* ptr2 = mymalloc(5);
 	char* ptr3 = (char*)mymalloc(35);
@@ -39,6 +40,10 @@ int main(int argc, char* argv[]) {
 	printf("p2 = %ld\n", p2%8);
 	printf("p3 = %ld\n", p3%8);
 	printf("p4 = %ld\n", p4%8);
+	myfree(++ptr1);
+	int* tester = malloc(sizeof(int));
+	myfree(tester);
+	//free(++tester);
 }
 
 
@@ -118,7 +123,7 @@ void* nextFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
-			return (void*) ptr;			
+			return (void*) (++ptr);			
 		}
 		else if(ptr->size > size){
 			split(ptr, size);
@@ -131,7 +136,7 @@ void* nextFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
-			return (void*) ptr;
+			return (void*) (++ptr);
 		}
 		prev = ptr;
 		ptr = ptr->nextFree;
@@ -152,7 +157,7 @@ void* nextFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
-			return (void*) ptr;			
+			return (void*) (++ptr);			
 		}
 		else if(ptr->size > size){
 			split(ptr, size);
@@ -165,7 +170,7 @@ void* nextFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
-			return (void*) ptr;
+			return (void*) (++ptr);
 		}
 		prev = ptr;
 		ptr = ptr->nextFree;
@@ -193,7 +198,7 @@ void *bestFit(size_t size) {
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
-			return (void*) ptr;			
+			return (void*) (++ptr);			
 		}
 		else if(ptr->size > size && (ptr->size-size < dis)){
 			dis = ptr->size - size;
@@ -203,15 +208,15 @@ void *bestFit(size_t size) {
 		ptr = ptr->nextFree;
 	}
 	if (best) {
+		ptr = best;
+		split(ptr, size);
 		if (best->prevFree)
 			best->prevFree->nextFree = best->nextFree;
 		else
 			freeHead = best->nextFree;
 		if (best->nextFree)
 			best->nextFree->prevFree = best->prevFree;
-		ptr = best;
-		split(ptr, size);
-		return ptr;
+		return (void*) (++ptr);
 	}
 	return NULL;
 }
@@ -239,3 +244,20 @@ void* mymalloc(size_t size){
 
 }
 
+void myfree(void* ptr) {
+	if (!ptr)
+		return;
+	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
+	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
+	uintptr_t add = (uintptr_t)(ptr);
+	if (add < lowerBound || add >= upperBound) {
+		printf("error: not a heap pointer\n");
+		return;
+	}
+	printf("looking good\n");
+	if (add % 8) {
+		printf("error: not a malloced address\n");
+		return;
+	}
+	return;
+}
