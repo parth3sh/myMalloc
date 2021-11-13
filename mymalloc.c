@@ -40,9 +40,9 @@ int main(int argc, char* argv[]) {
 	printf("p2 = %ld\n", p2%8);
 	printf("p3 = %ld\n", p3%8);
 	printf("p4 = %ld\n", p4%8);
-	myfree(++ptr1);
-	int* tester = malloc(sizeof(int));
-	myfree(tester);
+	myfree(ptr1);
+	//int* tester = malloc(sizeof(int));
+	//myfree(tester);
 	//free(++tester);
 }
 
@@ -244,6 +244,35 @@ void* mymalloc(size_t size){
 
 }
 
+void freeHelper(memBlock* ptr) {
+	memBlock* prev = NULL;
+	memBlock* curr = freeHead;
+	uintptr_t addy = (uintptr_t)(ptr);
+	uintptr_t currAddy;
+	while (curr) {
+		currAddy = (uintptr_t)(curr);
+		if (currAddy - addy > 0) {
+			ptr->prevFree = prev;
+			ptr->nextFree = curr;
+			if (prev == NULL) {
+				freeHead = ptr;
+			} else {
+				prev->nextFree = ptr;
+			}
+			curr->prevFree = ptr;
+			break;
+		}
+		prev = curr;
+		curr = curr->nextFree;
+	}
+	if (!curr) {
+		ptr->prevFree = prev;
+		ptr->nextFree = curr;
+		prev->nextFree = ptr;
+	}
+	return;
+}
+
 void myfree(void* ptr) {
 	if (!ptr)
 		return;
@@ -259,5 +288,11 @@ void myfree(void* ptr) {
 		printf("error: not a malloced address\n");
 		return;
 	}
+	// 1. free it
+	memBlock* nPtr = (memBlock*)(ptr - MEMSIZE);
+	freeHelper(nPtr);
+	// 2. coalesce
+	// 3. Profit
+
 	return;
 }
