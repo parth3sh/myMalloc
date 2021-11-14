@@ -7,6 +7,9 @@ static int fitAlgo;
 static char* memory;
 #define HEAPSIZE 1024*1024
 #define MEMSIZE 8
+#define FREE 123321
+#define ALLOCATED 321123
+#define DOUBLE_FREE 679976
 
 void myinit(int allocAlgo);
 void* mymalloc(size_t size);
@@ -24,26 +27,25 @@ static memBlock* lastUsed;
 
 int main(int argc, char* argv[]) {
 	myinit(1);
-	int* ptr1 = (int*)mymalloc(12);
+	//int* ptr1 = (int*)mymalloc(12);
 	void* ptr2 = mymalloc(5);
-	char* ptr3 = (char*)mymalloc(35);
-	void* ptr4 = mymalloc(1);
-	uintptr_t p1 = (uintptr_t)(ptr1);
+	//char* ptr3 = (char*)mymalloc(35);
+	//void* ptr4 = mymalloc(1);
+	//uintptr_t p1 = (uintptr_t)(ptr1);
 	uintptr_t p2 = (uintptr_t)(ptr2);
-	uintptr_t p3 = (uintptr_t)(ptr3);
-	uintptr_t p4 = (uintptr_t)(ptr4);
-	printf("p1 = %p\n", ptr1);
+	//uintptr_t p3 = (uintptr_t)(ptr3);
+	//uintptr_t p4 = (uintptr_t)(ptr4);
+	//printf("p1 = %p\n", ptr1);
 	printf("p2 = %p\n", ptr2);
-	printf("p3 = %p\n", ptr3);
-	printf("p4 = %p\n", ptr4);
-	printf("p1 = %ld\n", p1%8);
+	//printf("p3 = %p\n", ptr3);
+	//printf("p4 = %p\n", ptr4);
+	//printf("p1 = %ld\n", p1%8);
 	printf("p2 = %ld\n", p2%8);
-	printf("p3 = %ld\n", p3%8);
-	printf("p4 = %ld\n", p4%8);
-	myfree(ptr1);
-	//int* tester = malloc(sizeof(int));
+	//printf("p3 = %ld\n", p3%8);
+	//printf("p4 = %ld\n", p4%8);
+	myfree(ptr2);
+	myfree(ptr2);
 	//myfree(tester);
-	//free(++tester);
 }
 
 
@@ -53,16 +55,17 @@ void myinit(int allocAlgo){
 	fitAlgo = allocAlgo;
 	freeHead = (void*)memory;
 	freeHead->size = HEAPSIZE;
+	freeHead->free = FREE;
 }
 
 void split(memBlock* ptr, size_t size){
 	memBlock *extra=(void*)((void*)ptr+size);
 	extra->size=(ptr->size)-size;
-	extra->free=1;
+	extra->free=FREE;
 	extra->nextFree = ptr->nextFree;
 	extra->prevFree = ptr->prevFree;
 	ptr->size=size;
-	ptr->free=0;
+	ptr->free=ALLOCATED;
 	ptr->nextFree = extra;
 	lastUsed = extra;
  }
@@ -73,7 +76,7 @@ void* firstFit(size_t size){
 	while(ptr!=NULL){
 
 		if(ptr->size == size){
-			ptr->free = 0;
+			ptr->free = ALLOCATED;
 			lastUsed = ptr->nextFree;
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -112,7 +115,7 @@ void* nextFit(size_t size){
 	memBlock* prev = NULL;
 	while(ptr!=NULL){
 		if(ptr->size == size){
-			ptr->free = 0;
+			ptr->free = ALLOCATED;
 			lastUsed = ptr->nextFree;
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -146,7 +149,7 @@ void* nextFit(size_t size){
 
 	while(ptr!=NULL && ptr!=lastUsed){
 		if(ptr->size == size){
-			ptr->free = 0;
+			ptr->free = ALLOCATED;
 			lastUsed = ptr->nextFree;
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -187,7 +190,7 @@ void *bestFit(size_t size) {
 	while(ptr!=NULL){
 
 		if(ptr->size == size){
-			ptr->free = 0;
+			ptr->free = ALLOCATED;
 			lastUsed = ptr->nextFree;
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -237,6 +240,7 @@ void* mymalloc(size_t size){
 		ptr = nextFit(size);
 	}
 	
+	// Best Fit
 	else if(fitAlgo == 2){
 		ptr = bestFit(size);
 	}
@@ -249,6 +253,7 @@ void freeHelper(memBlock* ptr) {
 	memBlock* curr = freeHead;
 	uintptr_t addy = (uintptr_t)(ptr);
 	uintptr_t currAddy;
+	ptr->free = DOUBLE_FREE;
 	while (curr) {
 		currAddy = (uintptr_t)(curr);
 		if (currAddy - addy > 0) {
@@ -283,14 +288,29 @@ void myfree(void* ptr) {
 		printf("error: not a heap pointer\n");
 		return;
 	}
-	printf("looking good\n");
 	if (add % 8) {
 		printf("error: not a malloced address\n");
+		printf("because address not divisible by 8\n");
 		return;
 	}
-	// 1. free it
-	memBlock* nPtr = (memBlock*)(ptr - MEMSIZE);
+	memBlock* nPtr = (memBlock*)((void*)ptr - sizeof(memBlock));
+	printf("nPtr->free = %d\n", nPtr->free);
+	if (nPtr->free != FREE && nPtr->free != ALLOCATED && nPtr->free != DOUBLE_FREE) {
+		printf("error: not a malloced address\n");
+		printf("because mid block\n");
+		return;
+	}
+	if (nPtr->free == FREE) {
+		printf("error: not a malloced address\n");
+		printf("because it's equal to free\n");
+		return;
+	}
+	if (nPtr->free == DOUBLE_FREE) {
+		printf("error: double free\n");
+		return;
+	}
 	freeHelper(nPtr);
+	printf("Succ\n");
 	// 2. coalesce
 	// 3. Profit
 
