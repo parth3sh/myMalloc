@@ -278,6 +278,34 @@ void freeHelper(memBlock* ptr) {
 	return;
 }
 
+void coal(memBlock* ptr){
+    //Both sides are allocated and/or null
+	if((ptr->prevFree == NULL || ((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size != (uintptr_t)ptr)) && (ptr->nextFree == NULL || (uintptr_t)(ptr) + (ptr->size != (uintptr_t)(ptr->nextFree)))){
+		return;
+	}
+    //Left side is allocated, right is free
+	else if((ptr->prevFree == NULL || ((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size != (uintptr_t)ptr)) && ((uintptr_t)(ptr) + ptr->size == (uintptr_t)(ptr-> nextFree))){
+		ptr->size = ptr->size + ptr->nextFree->size;
+        ptr->nextFree = ptr->nextFree->nextFree;
+        return;
+	}
+    //Right allocated, left free
+	else if((((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size == (uintptr_t)ptr)) && (ptr->nextFree == NULL || (uintptr_t)(ptr) + (ptr->size != (uintptr_t)(ptr->nextFree)))){
+        ptr->prevFree->size = ptr->prevFree->size + ptr->size;
+        ptr->prevFree->nextFree = ptr->nextFree;
+        return;
+    }
+    //Both sides free
+    else{
+		ptr->size = ptr->size + ptr->nextFree->size;
+        ptr->nextFree = ptr->nextFree->nextFree;
+        ptr->prevFree->size = ptr->prevFree->size + ptr->size;
+        ptr->prevFree->nextFree = ptr->nextFree;
+        return;
+    }
+
+}
+
 void myfree(void* ptr) {
 	if (!ptr)
 		return;
@@ -312,6 +340,7 @@ void myfree(void* ptr) {
 	freeHelper(nPtr);
 	printf("Succ\n");
 	// 2. coalesce
+	coal(nPtr);
 	// 3. Profit
 
 	return;
