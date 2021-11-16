@@ -27,6 +27,15 @@ static memBlock* lastUsed;
 
 int main(int argc, char* argv[]) {
 	myinit(1);
+	void* ptr1 = mymalloc(16);
+	void* ptr2 = mymalloc(12);
+	myfree(ptr1);
+	myfree(ptr2);
+	memBlock* curr = freeHead;
+	while (curr) {
+		printf("size of curr = %ld\n", curr->size);
+		curr = curr->nextFree;
+	}
 	
 	// myinit(1);
 	// //int* ptr1 = (int*)mymalloc(12);
@@ -281,12 +290,16 @@ void freeHelper(memBlock* ptr) {
 }
 
 void coal(memBlock* ptr){
+	printf("entered coalesce function\n");
     //Both sides are allocated and/or null
+	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
 	if((ptr->prevFree == NULL || ((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size != (uintptr_t)ptr)) && (ptr->nextFree == NULL || (uintptr_t)(ptr) + (ptr->size != (uintptr_t)(ptr->nextFree)))){
+		printf("both sides are allocated\n");
 		return;
 	}
     //Left side is allocated, right is free
 	else if((ptr->prevFree == NULL || ((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size != (uintptr_t)ptr)) && ((uintptr_t)(ptr) + ptr->size == (uintptr_t)(ptr-> nextFree))){
+		printf("left is allocated, right is free\n");
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
 		ptr->nextFree->prevFree = ptr;
@@ -294,6 +307,7 @@ void coal(memBlock* ptr){
 	}
     //Right allocated, left free
 	else if((((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size == (uintptr_t)ptr)) && (ptr->nextFree == NULL || (uintptr_t)(ptr) + (ptr->size != (uintptr_t)(ptr->nextFree)))){
+		printf("right is allocated, left is free\n");
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
         ptr->prevFree->nextFree = ptr->nextFree;
 		
@@ -301,6 +315,7 @@ void coal(memBlock* ptr){
     }
     //Both sides free
     else{
+		printf("both sides free\n");
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
 		ptr->nextFree->prevFree = ptr;
