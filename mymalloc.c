@@ -27,25 +27,27 @@ static memBlock* lastUsed;
 
 int main(int argc, char* argv[]) {
 	myinit(1);
-	//int* ptr1 = (int*)mymalloc(12);
-	void* ptr2 = mymalloc(5);
-	//char* ptr3 = (char*)mymalloc(35);
-	//void* ptr4 = mymalloc(1);
-	//uintptr_t p1 = (uintptr_t)(ptr1);
-	uintptr_t p2 = (uintptr_t)(ptr2);
-	//uintptr_t p3 = (uintptr_t)(ptr3);
-	//uintptr_t p4 = (uintptr_t)(ptr4);
-	//printf("p1 = %p\n", ptr1);
-	printf("p2 = %p\n", ptr2);
-	//printf("p3 = %p\n", ptr3);
-	//printf("p4 = %p\n", ptr4);
-	//printf("p1 = %ld\n", p1%8);
-	printf("p2 = %ld\n", p2%8);
-	//printf("p3 = %ld\n", p3%8);
-	//printf("p4 = %ld\n", p4%8);
-	myfree(ptr2);
-	myfree(ptr2);
-	//myfree(tester);
+	
+	// myinit(1);
+	// //int* ptr1 = (int*)mymalloc(12);
+	// void* ptr2 = mymalloc(5);
+	// //char* ptr3 = (char*)mymalloc(35);
+	// //void* ptr4 = mymalloc(1);
+	// //uintptr_t p1 = (uintptr_t)(ptr1);
+	// uintptr_t p2 = (uintptr_t)(ptr2);
+	// //uintptr_t p3 = (uintptr_t)(ptr3);
+	// //uintptr_t p4 = (uintptr_t)(ptr4);
+	// //printf("p1 = %p\n", ptr1);
+	// printf("p2 = %p\n", ptr2);
+	// //printf("p3 = %p\n", ptr3);
+	// //printf("p4 = %p\n", ptr4);
+	// //printf("p1 = %ld\n", p1%8);
+	// printf("p2 = %ld\n", p2%8);
+	// //printf("p3 = %ld\n", p3%8);
+	// //printf("p4 = %ld\n", p4%8);
+	// myfree(ptr2);
+	// myfree(ptr2);
+	// //myfree(tester);
 }
 
 
@@ -287,18 +289,21 @@ void coal(memBlock* ptr){
 	else if((ptr->prevFree == NULL || ((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size != (uintptr_t)ptr)) && ((uintptr_t)(ptr) + ptr->size == (uintptr_t)(ptr-> nextFree))){
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
+		ptr->nextFree->prevFree = ptr;
         return;
 	}
     //Right allocated, left free
 	else if((((uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size == (uintptr_t)ptr)) && (ptr->nextFree == NULL || (uintptr_t)(ptr) + (ptr->size != (uintptr_t)(ptr->nextFree)))){
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
         ptr->prevFree->nextFree = ptr->nextFree;
+		
         return;
     }
     //Both sides free
     else{
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
+		ptr->nextFree->prevFree = ptr;
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
         ptr->prevFree->nextFree = ptr->nextFree;
         return;
