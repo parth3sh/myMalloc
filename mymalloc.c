@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int fitAlgo;
 static char* memory;
@@ -14,6 +15,7 @@ static char* memory;
 void myinit(int allocAlgo);
 void* mymalloc(size_t size);
 void myfree(void* ptr);
+void* myrealloc(void* ptr, size_t size);
 
 typedef struct memBlock {
 	int free;
@@ -26,16 +28,35 @@ static memBlock* freeHead;
 static memBlock* lastUsed;
 
 int main(int argc, char* argv[]) {
-	myinit(1);
-	void* ptr1 = mymalloc(16);
-	void* ptr2 = mymalloc(12);
-	//myfree(ptr1);
-	myfree(ptr2);
-	memBlock* curr = freeHead;
-	while (curr) {
-		printf("currSize = %ld\n", curr->size);
-		curr = curr->nextFree;
+	myinit(0);
+	int* ptr1 = (int*)mymalloc(50);
+	uintptr_t ogAddy = (uintptr_t)ptr1;
+	ptr1[0] = 1;
+	ptr1[1] = 2;
+	ptr1[2] = 3;
+	ptr1[3] = 4;
+	printf("sizeof(int) = %ld\n", sizeof(int));
+	printf("address of ptr1 = %zd\n", (uintptr_t)(ptr1));
+	printf("ptr1 size = %ld\n", ((memBlock*)((void*)ptr1-sizeof(memBlock)))->size);
+	void* ptr2 = mymalloc(50);
+	printf("address of ptr2 = %zd\n", (uintptr_t)(ptr2));
+	printf("ptr2 size = %ld\n", ((memBlock*)(ptr2-sizeof(memBlock)))->size);
+	ptr1 = (int*)myrealloc((void*)ptr1, 100);
+	uintptr_t newAddy = (uintptr_t)ptr1;
+	if (!ptr1) {
+		printf("ptr1 is null\n");
+		exit(0);
 	}
+	printf("ptr1 size = %ld\n", ((memBlock*)((void*)ptr1-sizeof(memBlock)))->size);
+	printf("ptr2 size = %ld\n", ((memBlock*)(ptr2-sizeof(memBlock)))->size);
+	if (ogAddy != newAddy) {
+		for (int i = 0; i < 4; i++)
+			printf("ptr1[%d] = %d\n", i, ptr1[i]);
+	}
+	//printf("ptr1 size after realloc = %ld\n", (memBlock*)((void*)ptr1-sizeof(memBlock))->size);
+	//printf("ptr2 size = %ld\n", ((memBlock*)((void*)ptr2-sizeof(memBlock)))->size);
+	//myfree(ptr1);
+	//myfree(ptr2);
 	//memBlock* curr = (void*)memory;
 	//while (curr) {
 	//	printf("size of curr = %ld\n", curr->size);
@@ -78,7 +99,9 @@ void myinit(int allocAlgo){
 
 void split(memBlock* ptr, size_t size){
 	memBlock *extra=(void*)((void*)ptr+size);
-	extra->size=(ptr->size)-size;
+	size_t diff = (ptr->size) - size;
+	//diff = max(diff, sizeof(memBlock)+MEMSIZE);
+	extra->size=diff;
 	extra->free=FREE;
 	extra->nextFree = ptr->nextFree;
 	extra->prevFree = ptr->prevFree;
@@ -108,7 +131,7 @@ void* firstFit(size_t size){
 			return (void*) (++ptr);			
 		}
 
-		else if(ptr->size > size){
+		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock)) {
 			split(ptr, size);
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -146,7 +169,7 @@ void* nextFit(size_t size){
 			}
 			return (void*) (++ptr);			
 		}
-		else if(ptr->size > size){
+		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock)){
 			split(ptr, size);
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -180,7 +203,7 @@ void* nextFit(size_t size){
 			}
 			return (void*) (++ptr);			
 		}
-		else if(ptr->size > size){
+		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock)){
 			split(ptr, size);
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -221,7 +244,7 @@ void *bestFit(size_t size) {
 			}
 			return (void*) (++ptr);			
 		}
-		else if(ptr->size > size && (ptr->size-size < dis)){
+		else if(ptr->size > size && (ptr->size-size < dis) && (ptr->size-size >= sizeof(memBlock))){
 			dis = ptr->size - size;
 			best = ptr;
 		}
@@ -407,4 +430,75 @@ void myfree(void* ptr) {
 	// 3. Profit
 
 	return;
+}
+
+void* myrealloc(void* ptr, size_t size) {
+	printf("i am in realloc\n");
+	if (!ptr) {
+		if (size == 0)
+			return NULL;
+		return mymalloc(size);
+	}
+
+	if (size == 0) {
+		myfree(ptr);
+		return NULL;
+	}
+
+	size_t tempSize = MEMSIZE;
+	if (size > MEMSIZE) {
+		tempSize = MEMSIZE * ((size + (MEMSIZE-1)) / MEMSIZE);
+	}
+
+	size = tempSize + sizeof(memBlock);
+	printf("size = %ld, tempSize = %ld\n", size, tempSize);
+	memBlock* m = (memBlock*)((void*)ptr - sizeof(memBlock));
+	memBlock* next = (memBlock*)((void*)m + m->size);
+	if (m->size == size) {
+		printf("size is da same\n");
+		return ptr;
+	}
+
+	if (m->size > size && m->size-size >= sizeof(memBlock)) {
+		printf("needs to be split\n");
+		split(m, size);
+		return ptr;
+	}
+	else if ((m->nextFree == NULL) || (next->free == ALLOCATED) || (m->size + next->size < size)) {
+		printf("cant be resized in place\n");
+		myfree(ptr);
+		void* newPtr = mymalloc(size-sizeof(memBlock));
+		if (!newPtr) {
+			printf("couldnt find da block\n");
+			return newPtr;
+		}
+		memcpy(newPtr, ptr, m->size - sizeof(memBlock));
+		return newPtr;
+	} 
+	else if (next->free == FREE || next->free == DOUBLE_FREE) {
+		size_t combinedSize = m->size + m->nextFree->size;
+		if (combinedSize == size) {
+			m->size += m->nextFree->size;
+			m->nextFree = m->nextFree->nextFree;
+			if (m->nextFree) {
+				m->nextFree->prevFree = m;
+			}
+			printf("resized in place - same size\n");
+			return ptr;
+		}
+		else if (combinedSize > size && m->nextFree->size-(size-(m->size)) >= sizeof(memBlock)) {
+			split(m->nextFree, size-(m->size));
+			m->size += m->nextFree->size;
+			m->nextFree = m->nextFree->nextFree;
+			if (m->nextFree) {
+				m->nextFree->prevFree = m;
+			}
+			printf("resized in place - greater size\n");
+			return ptr;
+		}
+	}
+	printf("ended up here\n");
+
+	return NULL;
+	
 }
