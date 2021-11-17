@@ -29,13 +29,18 @@ int main(int argc, char* argv[]) {
 	myinit(1);
 	void* ptr1 = mymalloc(16);
 	void* ptr2 = mymalloc(12);
-	myfree(ptr1);
+	//myfree(ptr1);
 	myfree(ptr2);
 	memBlock* curr = freeHead;
 	while (curr) {
-		printf("size of curr = %ld\n", curr->size);
+		printf("currSize = %ld\n", curr->size);
 		curr = curr->nextFree;
 	}
+	//memBlock* curr = (void*)memory;
+	//while (curr) {
+	//	printf("size of curr = %ld\n", curr->size);
+	//	curr = (memBlock*)((void*)curr + curr->size);
+	//}
 	
 	// myinit(1);
 	// //int* ptr1 = (int*)mymalloc(12);
@@ -67,6 +72,8 @@ void myinit(int allocAlgo){
 	freeHead = (void*)memory;
 	freeHead->size = HEAPSIZE;
 	freeHead->free = FREE;
+	freeHead->nextFree = NULL;
+	freeHead->prevFree = NULL;
 }
 
 void split(memBlock* ptr, size_t size){
@@ -262,17 +269,25 @@ void* mymalloc(size_t size){
 void freeHelper(memBlock* ptr) {
 	memBlock* prev = NULL;
 	memBlock* curr = freeHead;
-	uintptr_t addy = (uintptr_t)(ptr);
+	uintptr_t addy = (uintptr_t)((void*)ptr);
 	uintptr_t currAddy;
+	currAddy = (uintptr_t)(curr);
 	ptr->free = DOUBLE_FREE;
 	while (curr) {
-		currAddy = (uintptr_t)(curr);
-		if (currAddy - addy > 0) {
+		currAddy = (uintptr_t)((void*)curr);
+		long long int diff = (long long int)(currAddy) - (long long int)(addy);
+		printf("currAddy = %zd, addy = %zd\n", currAddy, addy);
+		if ((diff) > 0) {
+			printf("currAddy = %zd, addy = %zd\n", currAddy, addy);
+			printf("diff = %lld\n", diff);
 			ptr->prevFree = prev;
+			printf("address of ptr->prevFree = %zd\n", (uintptr_t)ptr->prevFree);
 			ptr->nextFree = curr;
 			if (prev == NULL) {
 				freeHead = ptr;
+				printf("does freehead get updated?\n");
 			} else {
+				printf("i am in here lol\n");
 				prev->nextFree = ptr;
 			}
 			curr->prevFree = ptr;
@@ -292,10 +307,23 @@ void freeHelper(memBlock* ptr) {
 void coal(memBlock* ptr){
 	printf("entered coalesce function\n");
     //Both sides are allocated and/or null
-	uintptr_t prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
-	uintptr_t prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
-	uintptr_t currAndSize = (uintptr_t)(ptr) + ptr->size;
-	uintptr_t currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
+	uintptr_t prevAndSize = 0;
+	uintptr_t prevToCurr = 0;
+	uintptr_t currAndSize = 0;
+	uintptr_t currToNext = 0;
+
+	if (ptr->prevFree != NULL) {
+		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
+		prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
+	}
+
+	if (ptr->nextFree != NULL) {
+		currAndSize = (uintptr_t)(ptr) + ptr->size;
+		currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
+	}
+
+	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
+
 
 	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
 	if((ptr->prevFree == NULL || (prevToCurr!= (uintptr_t)ptr)) && (ptr->nextFree == NULL || currToNext != (uintptr_t)(ptr->nextFree))){
@@ -307,7 +335,9 @@ void coal(memBlock* ptr){
 		printf("left is allocated, right is free\n");
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
-		ptr->nextFree->prevFree = ptr;
+		if (ptr->nextFree != NULL) {
+			ptr->nextFree->prevFree = ptr;
+		}
         return;
 	}
     //Right allocated, left free
@@ -315,17 +345,25 @@ void coal(memBlock* ptr){
 		printf("right is allocated, left is free\n");
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
         ptr->prevFree->nextFree = ptr->nextFree;
-		
         return;
     }
     //Both sides free
     else{
 		printf("both sides free\n");
 		ptr->size = ptr->size + ptr->nextFree->size;
+		printf("num 1\n");
         ptr->nextFree = ptr->nextFree->nextFree;
-		ptr->nextFree->prevFree = ptr;
+		printf("num 2\n");
+		if (ptr->nextFree != NULL) {
+			printf("in da conditional\n");
+			printf("address = %zd\n", (uintptr_t)(ptr->nextFree));
+			ptr->nextFree->prevFree = ptr;
+			printf("num 3\n");
+		}
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
+		printf("num 4\n");
         ptr->prevFree->nextFree = ptr->nextFree;
+		printf("in da end\n");
         return;
     }
 
