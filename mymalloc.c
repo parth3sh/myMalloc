@@ -63,7 +63,7 @@ void* firstFit(size_t size){
 			return (void*) (++ptr);			
 		}
 
-		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock)) {
+		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE) {
 			split(ptr, size);
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -101,7 +101,7 @@ void* nextFit(size_t size){
 			}
 			return (void*) (++ptr);			
 		}
-		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock)){
+		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE){
 			split(ptr, size);
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -135,7 +135,7 @@ void* nextFit(size_t size){
 			}
 			return (void*) (++ptr);			
 		}
-		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock)){
+		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE){
 			split(ptr, size);
 			if (prev == NULL) {
 				freeHead = ptr->nextFree;
@@ -176,7 +176,7 @@ void *bestFit(size_t size) {
 			}
 			return (void*) (++ptr);			
 		}
-		else if(ptr->size > size && (ptr->size-size < dis) && (ptr->size-size >= sizeof(memBlock))){
+		else if(ptr->size > size && (ptr->size-size < dis) && (ptr->size-size >= sizeof(memBlock) + MEMSIZE)){
 			dis = ptr->size - size;
 			best = ptr;
 		}
@@ -375,6 +375,18 @@ void myfree(void* ptr) {
 }
 
 void* myrealloc(void* ptr, size_t size) {
+	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
+	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
+	uintptr_t add = (uintptr_t)(ptr);
+	if (add < lowerBound || add >= upperBound) {
+		printf("error: not a heap pointer\n");
+		return NULL;
+	}
+	if (add % 8) {
+		printf("error: not a malloced address\n");
+		printf("because address not divisible by 8\n");
+		return NULL;
+	}
 	int originalSize = size;
 	printf("i am in realloc\n");
 	if (!ptr) {
@@ -392,23 +404,27 @@ void* myrealloc(void* ptr, size_t size) {
 	if (size > MEMSIZE) {
 		tempSize = MEMSIZE * ((size + (MEMSIZE-1)) / MEMSIZE);
 	}
-
 	size = tempSize + sizeof(memBlock);
 	printf("size = %ld, tempSize = %ld\n", size, tempSize);
+
 	memBlock* m = (memBlock*)((void*)ptr - sizeof(memBlock));
-	memBlock* next = (memBlock*)((void*)m + m->size);
+	printf("M ADDRESS: %zd\n", (uintptr_t)m);
+	printf("End of heap: %zd\n", (uintptr_t)((void*)memory + HEAPSIZE));
+	memBlock* next = NULL;
+	if ((void*)m + m->size < (void*)memory + HEAPSIZE)
+		next = (memBlock*)((void*)m + m->size);
 	if (m->size == size) {
 		printf("size is da same\n");
 		return ptr;
 	}
 
-	if (m->size > size && m->size-size >= sizeof(memBlock)) {
+	if (m->size > size && m->size-size >= sizeof(memBlock) + MEMSIZE) {
 		printf("needs to be split\n");
 		split(m, size);
 		m->payload = originalSize;
 		return ptr;
 	}
-	else if ((m->nextFree == NULL) || (next->free == ALLOCATED) || (m->size + next->size < size)) {
+	else if ((next == NULL) || (next->free == ALLOCATED) || (m->size + next->size < size)) {
 		printf("cant be resized in place\n");
 		myfree(ptr);
 		void* newPtr = mymalloc(size-sizeof(memBlock));
@@ -416,7 +432,7 @@ void* myrealloc(void* ptr, size_t size) {
 			printf("couldnt find da block\n");
 			return newPtr;
 		}
-		memcpy(newPtr, ptr, m->size - sizeof(memBlock));
+		memmove(newPtr, ptr, m->size - sizeof(memBlock));
 		((memBlock*)((void*)(newPtr) - sizeof(memBlock)))->payload = originalSize;
 		return newPtr;
 	} 
@@ -432,7 +448,7 @@ void* myrealloc(void* ptr, size_t size) {
 			printf("resized in place - same size\n");
 			return ptr;
 		}
-		else if (combinedSize > size && m->nextFree->size-(size-(m->size)) >= sizeof(memBlock)) {
+		else if (combinedSize > size && m->nextFree->size-(size-(m->size)) >= sizeof(memBlock) + MEMSIZE) {
 			split(m->nextFree, size-(m->size));
 			m->size += m->nextFree->size;
 			m->nextFree = m->nextFree->nextFree;

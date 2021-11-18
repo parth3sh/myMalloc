@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -Wvla -g -fsanitize=address
 LDFLAGS = 
-OBJFILES = mymalloc.o main.o
-TARGET = malloctest
+OBJFILES = mymalloc.o memperf.o
+TARGET = memperf
 
 all: $(TARGET)
 
