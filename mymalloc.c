@@ -29,15 +29,18 @@ void myinit(int allocAlgo){
 }
 
 void split(memBlock* ptr, size_t size){
-	memBlock *extra=(void*)((void*)ptr+size);
+	printf("the size being passed into split = %ld\n", size);
+	memBlock *extra=(memBlock*)((void*)ptr+size);
 	size_t diff = (ptr->size) - size;
 	//diff = max(diff, sizeof(memBlock)+MEMSIZE);
 	extra->size=diff;
+	printf("setting new block = free and its size = %d\n", extra->size);
 	extra->free=FREE;
 	extra->payload = 0;
 	extra->nextFree = ptr->nextFree;
 	extra->prevFree = ptr->prevFree;
 	ptr->size=size;
+	printf("setting old block = allocated and its size = %d\n", ptr->size);
 	ptr->free=ALLOCATED;
 	ptr->nextFree = extra;
 	lastUsed = extra;
@@ -237,6 +240,7 @@ void freeHelper(memBlock* ptr) {
 	uintptr_t addy = (uintptr_t)((void*)ptr);
 	uintptr_t currAddy;
 	currAddy = (uintptr_t)(curr);
+	printf("setting ptr = double free\n");
 	ptr->free = DOUBLE_FREE;
 	while (curr) {
 		currAddy = (uintptr_t)((void*)curr);
@@ -338,7 +342,7 @@ void myfree(void* ptr) {
 	if (!ptr)
 		return;
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
-	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
+	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock));
 	uintptr_t add = (uintptr_t)(ptr);
 	if (add < lowerBound || add >= upperBound) {
 		printf("error: not a heap pointer\n");
@@ -376,7 +380,7 @@ void myfree(void* ptr) {
 
 void* myrealloc(void* ptr, size_t size) {
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
-	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
+	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock));
 	uintptr_t add = (uintptr_t)(ptr);
 	if (add < lowerBound || add >= upperBound) {
 		printf("error: not a heap pointer\n");
@@ -426,7 +430,7 @@ void* myrealloc(void* ptr, size_t size) {
 	}
 	else if ((next == NULL) || (next->free == ALLOCATED) || (m->size + next->size < size)) {
 		printf("cant be resized in place\n");
-		myfree(ptr);
+		//myfree(ptr);
 		void* newPtr = mymalloc(size-sizeof(memBlock));
 		if (!newPtr) {
 			printf("couldnt find da block\n");
@@ -439,6 +443,7 @@ void* myrealloc(void* ptr, size_t size) {
 	else if (next->free == FREE || next->free == DOUBLE_FREE) {
 		size_t combinedSize = m->size + m->nextFree->size;
 		if (combinedSize == size) {
+			m->free = ALLOCATED;
 			m->payload = originalSize;
 			m->size += m->nextFree->size;
 			m->nextFree = m->nextFree->nextFree;
@@ -448,10 +453,10 @@ void* myrealloc(void* ptr, size_t size) {
 			printf("resized in place - same size\n");
 			return ptr;
 		}
-		else if (combinedSize > size && m->nextFree->size-(size-(m->size)) >= sizeof(memBlock) + MEMSIZE) {
-			split(m->nextFree, size-(m->size));
-			m->size += m->nextFree->size;
-			m->nextFree = m->nextFree->nextFree;
+		else if (combinedSize > size && next->size-(size-(m->size)) >= sizeof(memBlock) + MEMSIZE) {
+			split(next, size-(m->size));
+			m->size += next->size;
+			m->nextFree = next->nextFree;
 			if (m->nextFree) {
 				m->nextFree->prevFree = m;
 			}
@@ -471,17 +476,26 @@ void mycleanup() {
 }
 
 double utilization() {
+	printf("in da util\n");
 	memBlock* curr = (void*)memory;
 	memBlock* lastAllocatedBlock = NULL;
 	double memoryUsed = 0;
 	double spaceUsed;
-	while (curr && (void*)curr < ((void*)memory + HEAPSIZE)) {
+	while (((void*)curr) < (((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)))) {
+		printf("curr->free = %d\n", curr->free);
 		if (curr->free == ALLOCATED) {
+			printf("found an allocated block\n");
 			memoryUsed += curr->payload;
 			lastAllocatedBlock = curr;
 		}
+		printf("add of curr = %zd\n", (uintptr_t)curr);
+		printf("add of end = %zd\n", (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)));
+		printf("curr->size = %d\n", curr->size);
 		curr = (memBlock*)((void*)curr + curr->size);
 	}
+	printf("out of da loop\n");
+	if (!lastAllocatedBlock)
+		printf("it is null bruv\n");
 	void* end = (void*)lastAllocatedBlock + lastAllocatedBlock->size;
 	spaceUsed = end - (void*)memory;
 	printf("memory used = %f\n", memoryUsed);
