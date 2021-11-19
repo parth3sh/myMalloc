@@ -28,6 +28,7 @@ void myinit(int allocAlgo){
 	freeHead->payload = 0;
 }
 
+
 void split(memBlock* ptr, size_t size){
 	printf("the size being passed into split = %ld\n", size);
 	memBlock *extra=(memBlock*)((void*)ptr+size);
@@ -46,6 +47,7 @@ void split(memBlock* ptr, size_t size){
 	lastUsed = extra;
  }
 
+//looks good
 void* firstFit(size_t size){
 	memBlock* ptr = freeHead;
 	memBlock* prev = NULL;
@@ -63,8 +65,10 @@ void* firstFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
+			printf("(first fit) SAME SIZE MALLLOC, THE SIZE IS: %d\n", ptr->size);
 			return (void*) (++ptr);			
 		}
+
 
 		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE) {
 			split(ptr, size);
@@ -85,6 +89,10 @@ void* firstFit(size_t size){
 	}
 	return NULL;
 }
+
+
+
+
 
 void* nextFit(size_t size){
 	memBlock* ptr = lastUsed;
@@ -209,11 +217,12 @@ void* mymalloc(size_t size){
 	int originalSize = size;
 	size_t tempSize = MEMSIZE;
 	memBlock* temp;
+	//Make size 8 bit aligned and add it to memblock size (32 bytes)
 	if (size > MEMSIZE){
 		tempSize = MEMSIZE * ((size + (MEMSIZE-1)) / MEMSIZE);
 	}
 	size = tempSize + sizeof(memBlock);
-	printf("new size = %ld\n", size);
+	printf("(mymalloc)Post aligned new size = %ld\n", size);
 	void* ptr = NULL;
 	if(fitAlgo == 0){
 		ptr = firstFit(size);	
@@ -229,7 +238,7 @@ void* mymalloc(size_t size){
 		ptr = bestFit(size);
 	}
 
-
+	//set original payload of block for util purposes. 
 	if (ptr) {
 		temp = (memBlock*)((void*)ptr - sizeof(memBlock));
 		temp->payload = originalSize;
@@ -364,9 +373,9 @@ void myfree(void* ptr) {
 	if (!ptr)
 		return;
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
-	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock));
+	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
 	uintptr_t add = (uintptr_t)(ptr);
-	if (add < lowerBound || add >= upperBound) {
+	if (add < lowerBound || add > upperBound) {
 		printf("error: not a heap pointer\n");
 		return;
 	}
@@ -403,9 +412,9 @@ void myfree(void* ptr) {
 void* myrealloc(void* ptr, size_t size) {
 	printf("realloc size = %ld\n", size);
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
-	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock));
+	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
 	uintptr_t add = (uintptr_t)(ptr);
-	if (add < lowerBound || add >= upperBound) {
+	if (add < lowerBound || add > upperBound) {
 		printf("error: not a heap pointer\n");
 		return NULL;
 	}
@@ -440,10 +449,12 @@ void* myrealloc(void* ptr, size_t size) {
 	memBlock* next = NULL;
 	if ((void*)m + m->size < (void*)memory + HEAPSIZE)
 		next = (memBlock*)((void*)m + m->size);
+		printf("Next size is: %d", next->size);
 	if (m->size == size) {
 		printf("size is da same\n");
 		return ptr;
 	}
+	//case where its smaller but not small enough to split...
 
 	if (m->size > size && m->size-size >= sizeof(memBlock) + MEMSIZE) {
 		printf("needs to be split\n");
@@ -451,9 +462,13 @@ void* myrealloc(void* ptr, size_t size) {
 		m->payload = originalSize;
 		return ptr;
 	}
+	else if (m->size > size && m->size-size < sizeof(memBlock) + MEMSIZE){
+		printf("NOT SMALL ENOUGH TO SPLIT!");
+		return ptr;
+	}
 	else if ((next == NULL) || (next->free == ALLOCATED) || (m->size + next->size < size)) {
 		printf("cant be resized in place\n");
-		//myfree(ptr);
+		myfree(ptr);
 		void* newPtr = mymalloc(size-sizeof(memBlock));
 		if (!newPtr) {
 			printf("couldnt find da block\n");
@@ -478,39 +493,82 @@ void* myrealloc(void* ptr, size_t size) {
 		//	printf("combinedSize-size >= sizeof(memBlock) + MEMSIZE\n");
 		//else
 		//	printf("combinedSize-size < sizeof(memBlock) + MEMSIZE\n");
-		if (combinedSize >= size && m->size > size && combinedSize-size >= sizeof(memBlock) + MEMSIZE) {
-			printf("i should be in here\n");
-			int newSize = m->size - size;
+
+		//In place cases:
+
+		//if m and next size is same as size then no split necessary just merge
+		if(combinedSize == size || combinedSize - size < sizeof(memBlock) + MEMSIZE){
+			if(next->prevFree != NULL){
+				next->prevFree->nextFree = next -> nextFree;
+			}
+			else{
+				freeHead = next ->nextFree;
+			}
+			if(next->nextFree != NULL){
+				next->nextFree->prevFree = next->prevFree;
+			}
+			if(lastUsed == next){
+				lastUsed = next->nextFree;
+			}
 			m->size = combinedSize;
-			m->nextFree = next->nextFree;
-			if (m->nextFree) {
-				m->nextFree->prevFree = m;
-			}
 			m->payload = originalSize;
-			split(m, size);
-		}
-		else if (combinedSize == size) {
-			m->free = ALLOCATED;
-			m->payload = originalSize;
-			m->size += m->nextFree->size;
-			m->nextFree = m->nextFree->nextFree;
-			if (m->nextFree) {
-				m->nextFree->prevFree = m;
-			}
-			printf("resized in place - same size\n");
 			return ptr;
 		}
-		else if (combinedSize > size && combinedSize-size  >= sizeof(memBlock) + MEMSIZE) {
-			m->size += next->size;
-			m->nextFree = next->nextFree;
-			if (m->nextFree) {
-				m->nextFree->prevFree = m;
+		//if m and next size is greater than size, then split the next block and merge into split
+
+		if(combinedSize > size && combinedSize - size > sizeof(memBlock) + MEMSIZE){
+			int neededSize = size - m->size;
+			split(next, neededSize);
+			if(next->prevFree != NULL){
+				next->prevFree->nextFree = next -> nextFree;
 			}
+			else{
+				freeHead = next ->nextFree;
+			}
+			if(next->nextFree != NULL){
+				next->nextFree->prevFree = next->prevFree;
+			}
+			if(lastUsed == next){
+				lastUsed = next->nextFree;
+			}
+			m->size = size;
 			m->payload = originalSize;
-			split(m, size);
-			printf("resized in place - greater size\n");
 			return ptr;
 		}
+
+		// if (combinedSize >= size && m->size > size && combinedSize-size >= sizeof(memBlock) + MEMSIZE) {
+		// 	printf("i should be in here\n");
+		// 	int newSize = m->size - size;
+		// 	m->size = combinedSize;
+		// 	m->nextFree = next->nextFree;
+		// 	if (m->nextFree) {
+		// 		m->nextFree->prevFree = m;
+		// 	}
+		// 	m->payload = originalSize;
+		// 	split(m, size);
+		// }
+		// else if (combinedSize == size) {
+		// 	m->free = ALLOCATED;
+		// 	m->payload = originalSize;
+		// 	m->size += m->nextFree->size;
+		// 	m->nextFree = m->nextFree->nextFree;
+		// 	if (m->nextFree) {
+		// 		m->nextFree->prevFree = m;
+		// 	}
+		// 	printf("resized in place - same size\n");
+		// 	return ptr;
+		// }
+		// else if (combinedSize > size && combinedSize-size  >= sizeof(memBlock) + MEMSIZE) {
+		// 	m->size += next->size;
+		// 	m->nextFree = next->nextFree;
+		// 	if (m->nextFree) {
+		// 		m->nextFree->prevFree = m;
+		// 	}
+		// 	m->payload = originalSize;
+		// 	split(m, size);
+		// 	printf("resized in place - greater size\n");
+		// 	return ptr;
+		// }
 	}
 	printf("ended up here\n");
 
