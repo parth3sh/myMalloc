@@ -89,7 +89,8 @@ void* firstFit(size_t size){
 void* nextFit(size_t size){
 	memBlock* ptr = lastUsed;
 	memBlock* prev = NULL;
-	while(ptr!=NULL){
+	while(ptr!=NULL && (void*)ptr <= (void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)){
+		printf("still in the first loop\n");
 		if(ptr->size == size){
 			ptr->free = ALLOCATED;
 			lastUsed = ptr->nextFree;
@@ -120,6 +121,7 @@ void* nextFit(size_t size){
 		prev = ptr;
 		ptr = ptr->nextFree;
 	}
+	printf("i made it out of the first loop for second fit\n");
 	ptr = freeHead;
 	prev = NULL;
 
@@ -163,7 +165,7 @@ void *bestFit(size_t size) {
 	memBlock* prev = NULL;
 	memBlock* best = NULL;
 	int dis = INT_MAX;
-	while(ptr!=NULL){
+	while(ptr!=NULL && (void*)ptr <= (void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)){
 
 		if(ptr->size == size){
 			ptr->free = ALLOCATED;
@@ -185,6 +187,9 @@ void *bestFit(size_t size) {
 		}
 		prev = ptr;
 		ptr = ptr->nextFree;
+		if (ptr && (ptr->free != FREE && ptr->free != DOUBLE_FREE)) {
+			printf("in the best fit loop, ptr->free = %d\n", ptr->free);
+		}
 	}
 	if (best) {
 		ptr = best;
@@ -265,7 +270,7 @@ void freeHelper(memBlock* ptr) {
 		prev = curr;
 		curr = curr->nextFree;
 	}
-	if (!curr) {
+	if (!curr && prev) {
 		ptr->prevFree = prev;
 		ptr->nextFree = curr;
 		prev->nextFree = ptr;
@@ -292,6 +297,23 @@ void coal(memBlock* ptr){
 	}
 
 	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
+	printf("address of beginning = %zd, address of ptr = %zd\n", (uintptr_t)((void*)memory), (uintptr_t)ptr);
+	memBlock* tester = ptr;
+	if (ptr->prevFree == NULL) {
+		printf("prevFree == NULL\n");
+		printf("now it's time to see if left block is actually prevFree\n");
+		while (1) {
+			tester = (memBlock*)((void*)tester - 8);
+			if ((void*)tester < (void*)memory) {
+				printf("went too far behind\n");
+				break;
+			}
+			if (tester->free == ALLOCATED || tester->free == FREE || tester->free == DOUBLE_FREE) {
+				printf("tester->free = %d\n", tester->free);
+				break;
+			}
+		}
+	}
 
 
 	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
@@ -379,6 +401,7 @@ void myfree(void* ptr) {
 }
 
 void* myrealloc(void* ptr, size_t size) {
+	printf("realloc size = %ld\n", size);
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
 	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock));
 	uintptr_t add = (uintptr_t)(ptr);
@@ -392,7 +415,6 @@ void* myrealloc(void* ptr, size_t size) {
 		return NULL;
 	}
 	int originalSize = size;
-	printf("i am in realloc\n");
 	if (!ptr) {
 		if (size == 0)
 			return NULL;
@@ -401,6 +423,7 @@ void* myrealloc(void* ptr, size_t size) {
 
 	if (size == 0) {
 		myfree(ptr);
+		ptr = NULL;
 		return NULL;
 	}
 
@@ -441,8 +464,32 @@ void* myrealloc(void* ptr, size_t size) {
 		return newPtr;
 	} 
 	else if (next->free == FREE || next->free == DOUBLE_FREE) {
-		size_t combinedSize = m->size + m->nextFree->size;
-		if (combinedSize == size) {
+		size_t combinedSize = m->size + next->size;
+		printf("m->size = %d, next->size = %d,  and combinedSize = %ld\n", m->size, next->size, combinedSize);
+		//if (combinedSize >= size)
+		//	printf("combined size is greater than size\n");
+		//else
+		//	printf("combined isnt greater\n");
+		//if (m->size > size)
+		//	printf("m->size > size\n");
+		//else
+		//	printf("m->size <= size\n");
+		//if (combinedSize-size >= sizeof(memBlock) + MEMSIZE)
+		//	printf("combinedSize-size >= sizeof(memBlock) + MEMSIZE\n");
+		//else
+		//	printf("combinedSize-size < sizeof(memBlock) + MEMSIZE\n");
+		if (combinedSize >= size && m->size > size && combinedSize-size >= sizeof(memBlock) + MEMSIZE) {
+			printf("i should be in here\n");
+			int newSize = m->size - size;
+			m->size = combinedSize;
+			m->nextFree = next->nextFree;
+			if (m->nextFree) {
+				m->nextFree->prevFree = m;
+			}
+			m->payload = originalSize;
+			split(m, size);
+		}
+		else if (combinedSize == size) {
 			m->free = ALLOCATED;
 			m->payload = originalSize;
 			m->size += m->nextFree->size;
@@ -453,14 +500,14 @@ void* myrealloc(void* ptr, size_t size) {
 			printf("resized in place - same size\n");
 			return ptr;
 		}
-		else if (combinedSize > size && next->size-(size-(m->size)) >= sizeof(memBlock) + MEMSIZE) {
-			split(next, size-(m->size));
+		else if (combinedSize > size && combinedSize-size  >= sizeof(memBlock) + MEMSIZE) {
 			m->size += next->size;
 			m->nextFree = next->nextFree;
 			if (m->nextFree) {
 				m->nextFree->prevFree = m;
 			}
 			m->payload = originalSize;
+			split(m, size);
 			printf("resized in place - greater size\n");
 			return ptr;
 		}
@@ -480,9 +527,15 @@ double utilization() {
 	memBlock* curr = (void*)memory;
 	memBlock* lastAllocatedBlock = NULL;
 	double memoryUsed = 0;
+	int s = 0;
 	double spaceUsed;
-	while (((void*)curr) < (((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)))) {
+	void* end = NULL;
+	while (((void*)curr) <= (((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)))) {
 		printf("curr->free = %d\n", curr->free);
+		if (curr->free != FREE && curr->free != DOUBLE_FREE && curr->free != ALLOCATED) {
+			printf("entered garbage data. TERMINATING EARLY\n");
+			exit(1);
+		}
 		if (curr->free == ALLOCATED) {
 			printf("found an allocated block\n");
 			memoryUsed += curr->payload;
@@ -491,16 +544,34 @@ double utilization() {
 		printf("add of curr = %zd\n", (uintptr_t)curr);
 		printf("add of end = %zd\n", (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)));
 		printf("curr->size = %d\n", curr->size);
+		s += curr->size;
 		curr = (memBlock*)((void*)curr + curr->size);
 	}
 	printf("out of da loop\n");
-	if (!lastAllocatedBlock)
+	memBlock* pp = freeHead;
+	while (pp) {
+		if (pp->free != FREE && pp->free != DOUBLE_FREE) {
+			if (pp->free == ALLOCATED) {
+				printf("a free block is apparently allocated. TERMINATING EARLY\n");
+				exit(1);
+			}
+			printf("garbage data in free list. TERMINATING EARLY\n");
+			exit(1);
+		}
+		pp = pp->nextFree;
+	}
+	printf("out of da free loop\n");
+	if (!lastAllocatedBlock) {
 		printf("it is null bruv\n");
-	void* end = (void*)lastAllocatedBlock + lastAllocatedBlock->size;
-	spaceUsed = end - (void*)memory;
+		spaceUsed = 0;
+	} else {
+		end = (void*)lastAllocatedBlock + lastAllocatedBlock->size;
+		spaceUsed = end - (void*)memory;
+	}
 	printf("memory used = %f\n", memoryUsed);
 	printf("space used = %f\n", spaceUsed);
 	double ans = memoryUsed / spaceUsed;
 	printf("ratio = %f\n", ans);
+	printf("s = %d\n", s);
 	return ans;
 }
