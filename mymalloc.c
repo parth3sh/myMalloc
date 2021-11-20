@@ -30,6 +30,9 @@ void myinit(int allocAlgo){
 
 
 void split(memBlock* ptr, size_t size){
+
+
+	
 	printf("the size being passed into split = %ld\n", size);
 	memBlock *extra=(memBlock*)((void*)ptr+size);
 	size_t diff = (ptr->size) - size;
@@ -40,6 +43,15 @@ void split(memBlock* ptr, size_t size){
 	extra->payload = 0;
 	extra->nextFree = ptr->nextFree;
 	extra->prevFree = ptr->prevFree;
+	if(ptr->prevFree != NULL){
+		ptr->prevFree->nextFree = extra;
+	}
+	else{
+		freeHead = extra;
+	}
+	if(extra->nextFree != NULL){
+		extra->nextFree->prevFree = extra;
+	}
 	ptr->size=size;
 	printf("setting old block = allocated and its size = %d\n", ptr->size);
 	ptr->free=ALLOCATED;
@@ -64,6 +76,9 @@ void* firstFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
+			if(ptr->nextFree != NULL){
+				ptr->nextFree->prevFree = ptr->prevFree;
+			}
 			printf("(first fit) SAME SIZE MALLLOC, THE SIZE IS: %d\n", ptr->size);
 			return (void*) (++ptr);			
 		}
@@ -71,15 +86,6 @@ void* firstFit(size_t size){
 
 		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE) {
 			split(ptr, size);
-			if (prev == NULL) {
-				freeHead = ptr->nextFree;
-				if (freeHead)
-					freeHead->prevFree = NULL;
-			} else {
-				prev->nextFree = ptr->nextFree;
-				if (ptr->nextFree)
-					ptr->nextFree->prevFree = prev;
-			}
 			return (void*) (++ptr);
 		}
 
@@ -110,19 +116,13 @@ void* nextFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
+			if(ptr->nextFree != NULL){
+				ptr->nextFree->prevFree = ptr->prevFree;
+			}
 			return (void*) (++ptr);			
 		}
 		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE){
 			split(ptr, size);
-			if (prev == NULL) {
-				freeHead = ptr->nextFree;
-				if (freeHead)
-					freeHead->prevFree = NULL;
-			} else {
-				prev->nextFree = ptr->nextFree;
-				if (ptr->nextFree)
-					ptr->nextFree->prevFree = prev;
-			}
 			return (void*) (++ptr);
 		}
 		prev = ptr;
@@ -145,19 +145,13 @@ void* nextFit(size_t size){
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
+			if(ptr->nextFree != NULL){
+				ptr->nextFree->prevFree = ptr->prevFree;
+			}
 			return (void*) (++ptr);			
 		}
 		else if(ptr->size > size && ptr->size - size >= sizeof(memBlock) + MEMSIZE){
 			split(ptr, size);
-			if (prev == NULL) {
-				freeHead = ptr->nextFree;
-				if (freeHead)
-					freeHead->prevFree = NULL;
-			} else {
-				prev->nextFree = ptr->nextFree;
-				if (ptr->nextFree)
-					ptr->nextFree->prevFree = prev;
-			}
 			return (void*) (++ptr);
 		}
 		prev = ptr;
@@ -186,6 +180,9 @@ void *bestFit(size_t size) {
 				if (ptr->nextFree)
 					ptr->nextFree->prevFree = prev;
 			}
+			if(ptr->nextFree != NULL){
+				ptr->nextFree->prevFree = ptr->prevFree;
+			}
 			return (void*) (++ptr);			
 		}
 		else if(ptr->size > size && (ptr->size-size < dis) && (ptr->size-size >= sizeof(memBlock) + MEMSIZE)){
@@ -201,12 +198,6 @@ void *bestFit(size_t size) {
 	if (best) {
 		ptr = best;
 		split(ptr, size);
-		if (best->prevFree)
-			best->prevFree->nextFree = best->nextFree;
-		else
-			freeHead = best->nextFree;
-		if (best->nextFree)
-			best->nextFree->prevFree = best->prevFree;
 		return (void*) (++ptr);
 	}
 	return NULL;
@@ -256,10 +247,10 @@ void freeHelper(memBlock* ptr) {
 	currAddy = (uintptr_t)(curr);
 	printf("setting ptr = double free\n");
 	ptr->free = DOUBLE_FREE;
-	while (curr) {
+	while (curr && (uintptr_t)curr < (uintptr_t)memory + HEAPSIZE) {
 		currAddy = (uintptr_t)((void*)curr);
 		long long int diff = (long long int)(currAddy) - (long long int)(addy);
-		printf("currAddy = %zd, addy = %zd\n", currAddy, addy);
+		printf("currAddy = %zd, addy = %zd, nex:%zd\n", currAddy, addy, (uintptr_t)curr->nextFree);
 		if ((diff) > 0) {
 			printf("currAddy = %zd, addy = %zd\n", currAddy, addy);
 			printf("diff = %lld\n", diff);
@@ -464,13 +455,13 @@ void* myrealloc(void* ptr, size_t size) {
 	}
 	//case where its smaller but not small enough to split...
 
-	if (m->size > size && m->size-size >= sizeof(memBlock) + MEMSIZE) {
+	if (m->size > size && m->size-size > sizeof(memBlock) + MEMSIZE) {
 		printf("needs to be split\n");
 		split(m, size);
 		m->payload = originalSize;
 		return ptr;
 	}
-	else if (m->size > size && m->size-size < sizeof(memBlock) + MEMSIZE){
+	else if (m->size > size && m->size-size <= sizeof(memBlock) + MEMSIZE){
 		printf("NOT SMALL ENOUGH TO SPLIT!");
 		return ptr;
 	}
@@ -527,15 +518,7 @@ void* myrealloc(void* ptr, size_t size) {
 		if(combinedSize > size && combinedSize - size > sizeof(memBlock) + MEMSIZE){
 			int neededSize = size - m->size;
 			split(next, neededSize);
-			if(next->prevFree != NULL && (uintptr_t)next->prevFree != 0){
-				next->prevFree->nextFree = next -> nextFree;
-			}
-			else{
-				freeHead = next ->nextFree;
-			}
-			if(next->nextFree != NULL){
-				next->nextFree->prevFree = next->prevFree;
-			}
+			
 			if(lastUsed == next){
 				lastUsed = next->nextFree;
 			}
