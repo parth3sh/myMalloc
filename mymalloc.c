@@ -52,7 +52,6 @@ void* firstFit(size_t size){
 	memBlock* ptr = freeHead;
 	memBlock* prev = NULL;
 	while(ptr!=NULL){
-
 		if(ptr->size == size){
 			ptr->free = ALLOCATED;
 			lastUsed = ptr->nextFree;
@@ -230,6 +229,7 @@ void* mymalloc(size_t size){
 
 	//secondfit 
 	else if(fitAlgo == 1){
+
 		ptr = nextFit(size);
 	}
 	
@@ -441,15 +441,23 @@ void* myrealloc(void* ptr, size_t size) {
 		tempSize = MEMSIZE * ((size + (MEMSIZE-1)) / MEMSIZE);
 	}
 	size = tempSize + sizeof(memBlock);
-	printf("size = %ld, tempSize = %ld\n", size, tempSize);
+
 
 	memBlock* m = (memBlock*)((void*)ptr - sizeof(memBlock));
+	if (m->free != FREE && m->free != ALLOCATED && m->free != DOUBLE_FREE) {
+		printf("because mid block\n");
+		return NULL;
+	}
+	printf("size = %ld, tempSize = %ld, mSIZE: %ld\n", size, tempSize, m->size);	
 	printf("M ADDRESS: %zd\n", (uintptr_t)m);
 	printf("End of heap: %zd\n", (uintptr_t)((void*)memory + HEAPSIZE));
+	printf("M CALC = %zd\n", (uintptr_t)m + m->size);
+	printf("heap CALC = %zd\n", (uintptr_t)memory + HEAPSIZE);
 	memBlock* next = NULL;
-	if ((void*)m + m->size < (void*)memory + HEAPSIZE)
+	if ((uintptr_t)m + m->size < (uintptr_t)memory + HEAPSIZE){
 		next = (memBlock*)((void*)m + m->size);
 		printf("Next size is: %d", next->size);
+	}
 	if (m->size == size) {
 		printf("size is da same\n");
 		return ptr;
@@ -519,7 +527,7 @@ void* myrealloc(void* ptr, size_t size) {
 		if(combinedSize > size && combinedSize - size > sizeof(memBlock) + MEMSIZE){
 			int neededSize = size - m->size;
 			split(next, neededSize);
-			if(next->prevFree != NULL){
+			if(next->prevFree != NULL && (uintptr_t)next->prevFree != 0){
 				next->prevFree->nextFree = next -> nextFree;
 			}
 			else{
