@@ -355,12 +355,12 @@ void coal(memBlock* ptr){
 
 
 	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
-	if((ptr->prevFree == NULL || (prevAndSize!= (uintptr_t)ptr)) && (ptr->nextFree == NULL || currAndSize != (uintptr_t)(ptr->nextFree))){
+	if((ptr->prevFree == NULL || (prevToCurr!= (uintptr_t)ptr)) && (ptr->nextFree == NULL || currToNext != (uintptr_t)(ptr->nextFree))){
 		printf("both sides are allocated\n");
 		return;
 	}
     //Left side is allocated, right is free
-	else if((ptr->prevFree == NULL || (prevAndSize != (uintptr_t)ptr)) && (currAndSize == (uintptr_t)(ptr-> nextFree))){
+	else if((ptr->prevFree == NULL || (prevToCurr != (uintptr_t)ptr)) && (currToNext == (uintptr_t)(ptr-> nextFree))){
 		printf("left is allocated, right is free\n");
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
@@ -370,7 +370,7 @@ void coal(memBlock* ptr){
         return;
 	}
     //Right allocated, left free
-	else if(((prevAndSize == (uintptr_t)ptr)) && (ptr->nextFree == NULL || currAndSize!= (uintptr_t)(ptr->nextFree))){
+	else if(((prevToCurr == (uintptr_t)ptr)) && (ptr->nextFree == NULL || currToNext!= (uintptr_t)(ptr->nextFree))){
 		printf("right is allocated, left is free\n");
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
         ptr->prevFree->nextFree = ptr->nextFree;
