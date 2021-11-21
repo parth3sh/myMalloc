@@ -27,13 +27,14 @@ int main(int argc, char* argv[]) {
 	myinit(0);
 	time_t seed;
 	int amt = 100000;
-	srand((unsigned) time(&seed));
+	//srand((unsigned) time(&seed));
 	//srand(1637370771); first one
 	//srand(1637451443);
 
 	//srand(1637460495); i think this one has the bad free list
 	//srand(1637344124);
 	//srand(1637346510);
+	srand(1637519455);
 	printf("SEED: %lld\n", (long long) seed);
 
 	//srand(1637269614);
