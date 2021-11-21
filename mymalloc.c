@@ -289,12 +289,12 @@ void coal(memBlock* ptr){
 
 	if (ptr->prevFree != NULL) {
 		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
-		prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
+		//prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
 	}
 
 	if (ptr->nextFree != NULL) {
 		currAndSize = (uintptr_t)(ptr) + ptr->size;
-		currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
+		//currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
 	}
 
 	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
@@ -318,12 +318,12 @@ void coal(memBlock* ptr){
 
 
 	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
-	if((ptr->prevFree == NULL || (prevToCurr!= (uintptr_t)ptr)) && (ptr->nextFree == NULL || currToNext != (uintptr_t)(ptr->nextFree))){
+	if((ptr->prevFree == NULL || (prevAndSize!= (uintptr_t)ptr)) && (ptr->nextFree == NULL || currAndSize != (uintptr_t)(ptr->nextFree))){
 		printf("both sides are allocated\n");
 		return;
 	}
     //Left side is allocated, right is free
-	else if((ptr->prevFree == NULL || (prevToCurr != (uintptr_t)ptr)) && (currToNext == (uintptr_t)(ptr-> nextFree))){
+	else if((ptr->prevFree == NULL || (prevAndSize != (uintptr_t)ptr)) && (currAndSize == (uintptr_t)(ptr-> nextFree))){
 		printf("left is allocated, right is free\n");
 		ptr->size = ptr->size + ptr->nextFree->size;
         ptr->nextFree = ptr->nextFree->nextFree;
@@ -333,7 +333,7 @@ void coal(memBlock* ptr){
         return;
 	}
     //Right allocated, left free
-	else if(((prevToCurr == (uintptr_t)ptr)) && (ptr->nextFree == NULL || currToNext!= (uintptr_t)(ptr->nextFree))){
+	else if(((prevAndSize == (uintptr_t)ptr)) && (ptr->nextFree == NULL || currAndSize!= (uintptr_t)(ptr->nextFree))){
 		printf("right is allocated, left is free\n");
         ptr->prevFree->size = ptr->prevFree->size + ptr->size;
         ptr->prevFree->nextFree = ptr->nextFree;
@@ -403,7 +403,17 @@ void myfree(void* ptr) {
 	// 2. coalesce
 	coal(nPtr);
 	// 3. Profit
-
+	memBlock *tempPtr = freeHead;
+	printf("\n");
+	printf("NEW LIST ITERATION \n");
+	while(tempPtr!=NULL){
+		printf("THIS ADDRESS: %zd | NEXT FREE: %zd | PREV FREE: %zd | SIZE: %d | FREE: %d\n", (uintptr_t)tempPtr - (uintptr_t)memory, (uintptr_t)tempPtr->nextFree - (uintptr_t)memory,(uintptr_t)tempPtr->prevFree - (uintptr_t)memory, tempPtr->size, tempPtr->free);
+		if(tempPtr == tempPtr->nextFree){
+			exit(1);
+		}
+		tempPtr = tempPtr -> nextFree;
+	}
+	printf("\n");
 	return;
 }
 
