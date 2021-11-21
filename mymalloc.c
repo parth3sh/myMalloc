@@ -283,18 +283,18 @@ void coal(memBlock* ptr){
 	printf("entered coalesce function\n");
     //Both sides are allocated and/or null
 	uintptr_t prevAndSize = 0;
-	//uintptr_t prevToCurr = 0;
+	uintptr_t prevToCurr = 0;
 	uintptr_t currAndSize = 0;
-	//uintptr_t currToNext = 0;
+	uintptr_t currToNext = 0;
 
 	if (ptr->prevFree != NULL) {
 		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
-		//prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
+		prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
 	}
 
 	if (ptr->nextFree != NULL) {
 		currAndSize = (uintptr_t)(ptr) + ptr->size;
-		//currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
+		currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
 	}
 
 	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
@@ -315,6 +315,43 @@ void coal(memBlock* ptr){
 			}
 		}
 	}
+
+//void coal(memBlock* ptr){
+//	printf("entered coalesce function\n");
+//    //Both sides are allocated and/or null
+//	uintptr_t prevAndSize = 0;
+//	//uintptr_t prevToCurr = 0;
+//	uintptr_t currAndSize = 0;
+//	//uintptr_t currToNext = 0;
+//
+//	if (ptr->prevFree != NULL) {
+//		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
+//		//prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
+//	}
+//
+//	if (ptr->nextFree != NULL) {
+//		currAndSize = (uintptr_t)(ptr) + ptr->size;
+//		//currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
+//	}
+//
+//	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
+//	printf("address of beginning = %zd, address of ptr = %zd\n", (uintptr_t)((void*)memory), (uintptr_t)ptr);
+//	memBlock* tester = ptr;
+//	if (ptr->prevFree == NULL) {
+//		printf("prevFree == NULL\n");
+//		printf("now it's time to see if left block is actually prevFree\n");
+//		while (1) {
+//			tester = (memBlock*)((void*)tester - 8);
+//			if ((void*)tester < (void*)memory) {
+//				printf("went too far behind\n");
+//				break;
+//			}
+//			if (tester->free == ALLOCATED || tester->free == FREE || tester->free == DOUBLE_FREE) {
+//				printf("tester->free = %d\n", tester->free);
+//				break;
+//			}
+//		}
+//	}
 
 
 	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
