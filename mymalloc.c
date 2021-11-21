@@ -8,8 +8,8 @@
 
 static int fitAlgo;
 static char* memory;
-static int usedMem;
-static int usedSpace;
+//static int usedMem;
+//static int usedSpace;
 
 
 static memBlock* freeHead;
@@ -31,7 +31,7 @@ void myinit(int allocAlgo){
 
 
 void split(memBlock* ptr, size_t size){
-	printf("size of entire block is %ld\n", ptr->size);
+	printf("size of entire block is %d\n", ptr->size);
 	printf("the size being passed into split = %ld\n", size);
 	memBlock *extra=(memBlock*)((void*)ptr+size);
 	size_t diff = (ptr->size) - size;
@@ -283,9 +283,9 @@ void coal(memBlock* ptr){
 	printf("entered coalesce function\n");
     //Both sides are allocated and/or null
 	uintptr_t prevAndSize = 0;
-	uintptr_t prevToCurr = 0;
+	//uintptr_t prevToCurr = 0;
 	uintptr_t currAndSize = 0;
-	uintptr_t currToNext = 0;
+	//uintptr_t currToNext = 0;
 
 	if (ptr->prevFree != NULL) {
 		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
@@ -409,6 +409,7 @@ void myfree(void* ptr) {
 	while(tempPtr!=NULL){
 		printf("THIS ADDRESS: %zd | NEXT FREE: %zd | PREV FREE: %zd | SIZE: %d | FREE: %d\n", (uintptr_t)tempPtr - (uintptr_t)memory, (uintptr_t)tempPtr->nextFree - (uintptr_t)memory,(uintptr_t)tempPtr->prevFree - (uintptr_t)memory, tempPtr->size, tempPtr->free);
 		if(tempPtr == tempPtr->nextFree){
+			printf("NEXT FREE EQUALS ITSELF. TERMINATING EARLY\n");
 			exit(1);
 		}
 		tempPtr = tempPtr -> nextFree;
@@ -456,7 +457,7 @@ void* myrealloc(void* ptr, size_t size) {
 		printf("because mid block\n");
 		return NULL;
 	}
-	printf("size = %ld, tempSize = %ld, mSIZE: %ld\n", size, tempSize, m->size);	
+	printf("size = %ld, tempSize = %ld, mSIZE: %d\n", size, tempSize, m->size);	
 	printf("M ADDRESS: %zd\n", (uintptr_t)m);
 	printf("End of heap: %zd\n", (uintptr_t)((void*)memory + HEAPSIZE));
 	printf("M CALC = %zd\n", (uintptr_t)m + m->size);
@@ -602,7 +603,7 @@ double utilization() {
 
 		if (curr->free != FREE && curr->free != DOUBLE_FREE && curr->free != ALLOCATED) {
 			printf("entered garbage data at location: %zd and mem is %zd\n", (uintptr_t)curr, (uintptr_t)memory);
-			//exit(1);
+			exit(1);
 			break;
 		}
 		if (curr->free == ALLOCATED) {
@@ -623,10 +624,10 @@ double utilization() {
 		if (pp->free != FREE && pp->free != DOUBLE_FREE) {
 			if (pp->free == ALLOCATED) {
 				printf("a free block is apparently allocated. TERMINATING EARLY\n");
-				// exit(1);
+				exit(1);
 			}
 			printf("garbage data in free list. TERMINATING EARLY\n");
-			// exit(1);
+			exit(1);
 		}
 		pp = pp->nextFree;
 	}
