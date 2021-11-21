@@ -589,6 +589,7 @@ void mycleanup() {
 
 double utilization() {
 	printf("in da util\n");
+	int numFreeBlocks = 0;
 	memBlock* curr = (void*)memory;
 	memBlock* lastAllocatedBlock = NULL;
 	double memoryUsed = 0;
@@ -611,6 +612,8 @@ double utilization() {
 			memoryUsed += curr->payload;
 			lastAllocatedBlock = curr;
 		}
+		else if (curr->free == FREE || curr->free == DOUBLE_FREE)
+			numFreeBlocks++;
 		printf("add of curr = %zd\n", (uintptr_t)curr);
 		printf("add of end = %zd\n", (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)));
 		printf("curr->size = %d\n", curr->size);
@@ -639,6 +642,7 @@ double utilization() {
 		end = (void*)lastAllocatedBlock + lastAllocatedBlock->size;
 		spaceUsed = end - (void*)memory;
 	}
+	printf("numFreeBlocks = %d\n", numFreeBlocks);
 	printf("memory used = %f\n", memoryUsed);
 	printf("space used = %f\n", spaceUsed);
 	double ans = memoryUsed / spaceUsed;
