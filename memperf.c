@@ -12,35 +12,57 @@ To-Do:
 2. Time how long it takes to finish making all calls
 3. Use utilization()
 4. mycleanup()
-
 - For number 1, how to choose between mymalloc, myrealloc, and myfree?
 	- Assign 0 to mymalloc, 1 to myrealloc, and 2 to myfree
 	- Pick random number in interval [0,2]
-
 - For timing, get time before starting test for one fit, time after, and subtract
 - Throughput = num ops / time
-
-
 */
 
 int main(int argc, char* argv[]) {
-	myinit(1);
+	myinit(0);
 	time_t seed;
-	int amt = 10000;
+	int amt = 100000;
 	//srand((unsigned) time(&seed));
-	//srand(1637272616);
-	printf("SEED: %lld", (long long) seed);
+	//srand(1637370771); first one
+	//srand(1637451443);
+
+	//srand(1637460495); i think this one has the bad free list
+	//srand(1637344124);
+	//srand(1637346510);
+	//srand(1637519455);
+	//srand(1637524311);
+	srand(1637533710);
+	
+	printf("SEED: %lld\n", (long long) seed);
 
 	//srand(1637269614);
 	//srand(1637342748);
-	srand(1637346510);
+	//srand(1637346510);
+	//srand(1637522666);
 	void* pointers[20];
-	if(!pointers[0]){
-		printf("NULL");
-	}
-	for( int n = 0 ; n < 2*amt; n++ ) {
+	//if(!pointers[0]){
+	//	printf("NULL");
+	//}
+	// void* ptra = mymalloc(50);
+	// void* ptrb = mymalloc(50);
+	// void* ptrc = mymalloc(50);
+	// void* ptrd = mymalloc(50);
+	// void* ptre = mymalloc(50);
+	// void* ptrf = mymalloc(50);
+	// void* ptrg = mymalloc(50);
+	// void* ptrh = mymalloc(50);
+	// void* ptri = mymalloc(50);
+	// myfree(ptra);
+	// myfree(ptrc);
+	// myfree(ptrf);
+	// myfree(ptre);
+	// myfree(ptrh);
+
+
+	for( int n = 0 ; n < amt; n++ ) {
 		printf("iteration # = %d\n", n);
-		int randGen = rand() % 2;
+		int randGen = rand() % 3;
 		int pointerIndex = rand()%20;
 		int size = (rand()%256)+1;
 		//int randGen = 0;
