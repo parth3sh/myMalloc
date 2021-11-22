@@ -20,10 +20,10 @@ To-Do:
 */
 
 int main(int argc, char* argv[]) {
-	myinit(0);
+	myinit(1);
 	time_t seed;
-	int amt = 100000;
-	//srand((unsigned) time(&seed));
+	int amt = 10000;
+	srand((unsigned) time(&seed));
 	//srand(1637370771); first one
 	//srand(1637451443);
 
@@ -32,8 +32,9 @@ int main(int argc, char* argv[]) {
 	//srand(1637346510);
 	//srand(1637519455);
 	//srand(1637524311);
-	srand(1637533710);
+	//srand(1637533710); this one had the negative size parameter
 	
+	//srand(1637550700);
 	printf("SEED: %lld\n", (long long) seed);
 
 	//srand(1637269614);

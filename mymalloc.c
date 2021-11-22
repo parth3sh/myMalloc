@@ -17,6 +17,7 @@ static memBlock* lastUsed;
 
 
 void freeiteration() {
+	//printf("new file tester\n");
 	memBlock *tempPtr = freeHead;
 	printf("\n");
 	printf("NEW LIST ITERATION \n");
@@ -45,6 +46,7 @@ void myinit(int allocAlgo){
 
 
 void split(memBlock* ptr, size_t size){
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
 	printf("size of entire block is %d\n", ptr->size);
 	printf("the size being passed into split = %ld\n", size);
 	memBlock *extra=(memBlock*)((void*)ptr+size);
@@ -81,7 +83,7 @@ void* firstFit(size_t size){
 		//printf("what the frick is ptr->free? it is %d\n", ptr->free);
 		if (ptr->free == 0) {
 			printf("address of broken ptr = %zd\n", (uintptr_t)ptr-(uintptr_t)memory);
-			freeiteration();
+			//freeiteration();
 		}
 		if(ptr->size == size){
 			ptr->free = ALLOCATED;
@@ -118,8 +120,14 @@ void* firstFit(size_t size){
 
 
 void* nextFit(size_t size){
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
 	memBlock* ptr = lastUsed;
 	memBlock* prev = NULL;
+
+	if (ptr != NULL) {
+		prev = ptr->prevFree;
+	}
+
 	while(ptr!=NULL && (void*)ptr <= (void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)){
 		printf("still in the first loop\n");
 		if(ptr->size == size){
@@ -219,7 +227,8 @@ void *bestFit(size_t size) {
 }
 
 void* mymalloc(size_t size){
-	printf("\n\n\n *******Size of Address 2776 = %d****** \n\n\n", ((memBlock*)((void*)memory + 2776))->size);
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
+	//printf("\n\n\n *******Size of Address 2776 = %d****** \n\n\n", ((memBlock*)((void*)memory + 2776))->size);
 	int originalSize = size;
 	size_t tempSize = MEMSIZE;
 	memBlock* temp;
@@ -251,20 +260,7 @@ void* mymalloc(size_t size){
 		temp->payload = originalSize;
 	}
 
-	memBlock *tempPtr = freeHead;
-	printf("\n");
-	printf("NEW LIST ITERATION \n");
-	while(tempPtr!=NULL){
-		printf("THIS ADDRESS: %zd | NEXT FREE: %zd | PREV FREE: %zd | SIZE: %d | FREE: %d\n", (uintptr_t)tempPtr - (uintptr_t)memory, (uintptr_t)tempPtr->nextFree - (uintptr_t)memory,(uintptr_t)tempPtr->prevFree - (uintptr_t)memory, tempPtr->size, tempPtr->free);
-		if(tempPtr == tempPtr->nextFree){
-			printf("NEXT FREE EQUALS ITSELF. TERMINATING EARLY\n");
-			exit(1);
-		}
-		tempPtr = tempPtr -> nextFree;
-	}
-	printf("\n");
-	if ((uintptr_t)((void*)ptr - 32) - (uintptr_t)memory == 2776)
-		printf("\n\n\n********************** BAD BOY MALLOC *************************\n\n\n");
+	//freeiteration();
 	return ptr;
 
 }
@@ -313,45 +309,10 @@ void freeHelper(memBlock* ptr) {
 	return;
 }
 
-//void coal(memBlock* ptr){
-//	printf("entered coalesce function\n");
-//    //Both sides are allocated and/or null
-//	uintptr_t prevAndSize = 0;
-//	uintptr_t prevToCurr = 0;
-//	uintptr_t currAndSize = 0;
-//	uintptr_t currToNext = 0;
-//
-//	if (ptr->prevFree != NULL) {
-//		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
-//		prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
-//	}
-//
-//	if (ptr->nextFree != NULL) {
-//		currAndSize = (uintptr_t)(ptr) + ptr->size;
-//		currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
-//	}
-//
-//	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
-//	printf("address of beginning = %zd, address of ptr = %zd\n", (uintptr_t)((void*)memory), (uintptr_t)ptr);
-//	memBlock* tester = ptr;
-//	if (ptr->prevFree == NULL) {
-//		printf("prevFree == NULL\n");
-//		printf("now it's time to see if left block is actually prevFree\n");
-//		while (1) {
-//			tester = (memBlock*)((void*)tester - 8);
-//			if ((void*)tester < (void*)memory) {
-//				printf("went too far behind\n");
-//				break;
-//			}
-//			if (tester->free == ALLOCATED || tester->free == FREE || tester->free == DOUBLE_FREE) {
-//				printf("tester->free = %d\n", tester->free);
-//				break;
-//			}
-//		}
-//	}
 
 void coal(memBlock* ptr){
 	printf("entered coalesce function\n");
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
     //Both sides are allocated and/or null
 	uintptr_t prevAndSize = 0;
 	//uintptr_t prevToCurr = 0;
@@ -371,21 +332,6 @@ void coal(memBlock* ptr){
 	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
 	printf("address of beginning = %zd, address of ptr = %zd\n", (uintptr_t)((void*)memory), (uintptr_t)ptr);
 	memBlock* tester = ptr;
-	if (ptr->prevFree == NULL) {
-		printf("prevFree == NULL\n");
-		printf("now it's time to see if left block is actually prevFree\n");
-		while (1) {
-			tester = (memBlock*)((void*)tester - 8);
-			if ((void*)tester < (void*)memory) {
-				printf("went too far behind\n");
-				break;
-			}
-			if (tester->free == ALLOCATED || tester->free == FREE || tester->free == DOUBLE_FREE) {
-				printf("tester->free = %d\n", tester->free);
-				break;
-			}
-		}
-	}
 
 
 	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
@@ -402,6 +348,8 @@ void coal(memBlock* ptr){
 		if (ptr->nextFree != NULL) {
 			ptr->nextFree->prevFree = ptr;
 		}
+		if (temp == lastUsed)
+			lastUsed = ptr;
 		temp->free = -1;
         return;
 	}
@@ -414,6 +362,8 @@ void coal(memBlock* ptr){
 		if(ptr->nextFree!=NULL){
 			ptr->nextFree->prevFree = ptr->prevFree;
 		}
+		if (temp == lastUsed)
+			lastUsed = temp->prevFree;
 		temp->free = -1;
         return;
     }
@@ -438,6 +388,8 @@ void coal(memBlock* ptr){
 		if(ptr->nextFree!=NULL){
 			ptr->nextFree->prevFree = ptr->prevFree;
 		}
+		if (temp2 == lastUsed)
+			lastUsed = temp1->prevFree;
 		temp1->free = -1;
 		temp2->free = -1;
 		printf("in da end\n");
@@ -446,154 +398,12 @@ void coal(memBlock* ptr){
 
 }
 
-void coalForRealloc(memBlock* ptr){
-	printf("entered coalesce function\n");
-    //Both sides are allocated and/or null
-	uintptr_t prevAndSize = 0;
-	//uintptr_t prevToCurr = 0;
-	uintptr_t currAndSize = 0;
-	//uintptr_t currToNext = 0;
-
-	if (ptr->prevFree != NULL) {
-		prevAndSize = (uintptr_t)(ptr->prevFree) + (ptr->prevFree)->size;
-		//prevToCurr = MEMSIZE * ((prevAndSize + (MEMSIZE-1)) / MEMSIZE);
-	}
-
-	if (ptr->nextFree != NULL) {
-		currAndSize = (uintptr_t)(ptr) + ptr->size;
-		//currToNext = MEMSIZE * ((currAndSize + (MEMSIZE-1)) / MEMSIZE);
-	}
-
-	printf("prevAndSize = %zd, currAndSize = %zd\n", prevAndSize, currAndSize);
-	printf("address of beginning = %zd, address of ptr = %zd\n", (uintptr_t)((void*)memory), (uintptr_t)ptr);
-	memBlock* tester = ptr;
-	if (ptr->prevFree == NULL) {
-		printf("prevFree == NULL\n");
-		printf("now it's time to see if left block is actually prevFree\n");
-		while (1) {
-			tester = (memBlock*)((void*)tester - 8);
-			if ((void*)tester < (void*)memory) {
-				printf("went too far behind\n");
-				break;
-			}
-			if (tester->free == ALLOCATED || tester->free == FREE || tester->free == DOUBLE_FREE) {
-				printf("tester->free = %d\n", tester->free);
-				break;
-			}
-		}
-	}
 
 
-	printf("current pointer address = %zd, prev p address = %zd, next p address = %zd\n", (uintptr_t)(ptr), (uintptr_t)(ptr->prevFree), (uintptr_t)(ptr->nextFree));
-	if((ptr->prevFree == NULL || (prevAndSize != (uintptr_t)ptr)) && (ptr->nextFree == NULL || currAndSize != (uintptr_t)(ptr->nextFree))){
-		printf("both sides are allocated\n");
-		return;
-	}
-    //Left side is allocated, right is free
-	else if((ptr->prevFree == NULL || (prevAndSize != (uintptr_t)ptr)) && (currAndSize == (uintptr_t)(ptr-> nextFree))){
-		printf("left is allocated, right is free\n");
-		ptr->size = ptr->size + ptr->nextFree->size;
-        ptr->nextFree = ptr->nextFree->nextFree;
-		if (ptr->nextFree != NULL) {
-			ptr->nextFree->prevFree = ptr;
-		}
-        return;
-	}
-    //Right allocated, left free
-	else if(((prevAndSize == (uintptr_t)ptr)) && (ptr->nextFree == NULL || currAndSize!= (uintptr_t)(ptr->nextFree))){
-		printf("right is allocated, left is free\n");
-        ptr->prevFree->size = ptr->prevFree->size + ptr->size;
-        ptr->prevFree->nextFree = ptr->nextFree;
-		if(ptr->nextFree!=NULL){
-			ptr->nextFree->prevFree = ptr->prevFree;
-		}
-        return;
-    }
-    //Both sides free
-    else{
-		printf("both sides free\n");
-		ptr->size = ptr->size + ptr->nextFree->size;
-		printf("num 1\n");
-        ptr->nextFree = ptr->nextFree->nextFree;
-		printf("num 2\n");
-		if (ptr->nextFree != NULL) {
-			printf("in da conditional\n");
-			printf("address = %zd\n", (uintptr_t)(ptr->nextFree));
-			ptr->nextFree->prevFree = ptr;
-			printf("num 3\n");
-		}
-        ptr->prevFree->size = ptr->prevFree->size + ptr->size;
-		printf("num 4\n");
-        ptr->prevFree->nextFree = ptr->nextFree;
-		if(ptr->nextFree!=NULL){
-			ptr->nextFree->prevFree = ptr->prevFree;
-		}
-		printf("in da end\n");
-        return;
-    }
-
-}
-
-
-void freeForRealloc(void* ptr){
-	printf("FREE FOR REALLOC\n");
-	if (!ptr)
-		return;
-	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
-	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
-	uintptr_t add = (uintptr_t)(ptr);
-	if (add < lowerBound || add > upperBound) {
-		printf("error: not a heap pointer\n");
-		return;
-	}
-	if (add % 8) {
-		printf("error: not a malloced address\n");
-		printf("because address not divisible by 8\n");
-		return;
-	}
-	memBlock* nPtr = (memBlock*)((void*)ptr - sizeof(memBlock));
-	printf("nPtr->free = %d\n", nPtr->free);
-	if (nPtr->free != FREE && nPtr->free != ALLOCATED && nPtr->free != DOUBLE_FREE) {
-		printf("error: not a malloced address\n");
-		printf("because mid block\n");
-		return;
-	}
-	if (nPtr->free == FREE) {
-		printf("error: not a malloced address\n");
-		printf("because it's equal to free\n");
-		return;
-	}
-	if (nPtr->free == DOUBLE_FREE) {
-		printf("error: double free\n");
-		return;
-	}
-	freeHelper(nPtr);
-	printf("Succ\n");
-	// 2. coalesce
-	printf("BEFORE COAL: %d\n", ((memBlock*)((void*)ptr - 32))->size, ((memBlock*)((void*)ptr - 32))->size);
-
-	coalForRealloc(nPtr);
-	printf("AFTER COAL: %d\n", ((memBlock*)((void*)ptr - 32))->size, ((memBlock*)((void*)ptr - 32))->size);
-
-	// 3. Profit
-	memBlock *tempPtr = freeHead;
-	printf("\n");
-	printf("NEW LIST ITERATION \n");
-	while(tempPtr!=NULL){
-		printf("THIS ADDRESS: %zd | NEXT FREE: %zd | PREV FREE: %zd | SIZE: %d | FREE: %d\n", (uintptr_t)tempPtr - (uintptr_t)memory, (uintptr_t)tempPtr->nextFree - (uintptr_t)memory,(uintptr_t)tempPtr->prevFree - (uintptr_t)memory, tempPtr->size, tempPtr->free);
-		if(tempPtr == tempPtr->nextFree){
-			printf("NEXT FREE EQUALS ITSELF. TERMINATING EARLY\n");
-			exit(1);
-		}
-		tempPtr = tempPtr -> nextFree;
-	}
-	printf("\n");
-
-	return;
-}
 
 void myfree(void* ptr) {
-	printf("\n\n\n *******Size of Address 2776 = %d****** \n\n\n", ((memBlock*)((void*)memory + 2776))->size);
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
+	//printf("\n\n\n *******Size of Address 2776 = %d****** \n\n\n", ((memBlock*)((void*)memory + 2776))->size);
 	if (!ptr)
 		return;
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
@@ -629,24 +439,14 @@ void myfree(void* ptr) {
 	// 2. coalesce
 	coal(nPtr);
 	// 3. Profit
-	memBlock *tempPtr = freeHead;
-	printf("\n");
-	printf("NEW LIST ITERATION \n");
-	while(tempPtr!=NULL){
-		printf("THIS ADDRESS: %zd | NEXT FREE: %zd | PREV FREE: %zd | SIZE: %d | FREE: %d\n", (uintptr_t)tempPtr - (uintptr_t)memory, (uintptr_t)tempPtr->nextFree - (uintptr_t)memory,(uintptr_t)tempPtr->prevFree - (uintptr_t)memory, tempPtr->size, tempPtr->free);
-		if(tempPtr == tempPtr->nextFree){
-			printf("NEXT FREE EQUALS ITSELF. TERMINATING EARLY\n");
-			exit(1);
-		}
-		tempPtr = tempPtr -> nextFree;
-	}
-	printf("\n");
+	//freeiteration();
 	return;
 }
 
 void* myrealloc(void* ptr, size_t size) {
 	printf("realloc size = %ld\n", size);
-	printf("\n\n\n *******Size of Address 2776 = %d****** \n\n\n", ((memBlock*)((void*)memory + 2776))->size);
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
+	//printf("\n\n\n *******Size of Address 2776 = %d****** \n\n\n", ((memBlock*)((void*)memory + 2776))->size);
 	uintptr_t lowerBound = (uintptr_t)((void*)memory + sizeof(memBlock));
 	uintptr_t upperBound = (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE);
 	uintptr_t add = (uintptr_t)(ptr);
@@ -776,7 +576,7 @@ void* myrealloc(void* ptr, size_t size) {
 			}
 			m->size = combinedSize;
 			m->payload = originalSize;
-			freeiteration();
+			//freeiteration();
 			return ptr;
 		}
 		//if m and next size is greater than size, then split the next block and merge into split
@@ -796,8 +596,11 @@ void* myrealloc(void* ptr, size_t size) {
 			if (next->nextFree) {
 				next->nextFree->prevFree = (void*)next + neededSize;
 			}
+			if (lastUsed == next) {
+				lastUsed = (void*)next + neededSize;
+			}
 			memmove((void*)next+neededSize, next, sizeof(memBlock));
-			freeiteration();
+			//freeiteration();
 			printf("m->size = %d\n", m->size);
 			return ptr;
 		}
@@ -837,18 +640,7 @@ void* myrealloc(void* ptr, size_t size) {
 		// }
 	}
 	printf("ended up here\n");
-	memBlock *tempPtr = freeHead;
-	printf("\n");
-	printf("NEW LIST ITERATION \n");
-	while(tempPtr!=NULL){
-		printf("THIS ADDRESS: %zd | NEXT FREE: %zd | PREV FREE: %zd | SIZE: %d | FREE: %d\n", (uintptr_t)tempPtr - (uintptr_t)memory, (uintptr_t)tempPtr->nextFree - (uintptr_t)memory,(uintptr_t)tempPtr->prevFree - (uintptr_t)memory, tempPtr->size, tempPtr->free);
-		if(tempPtr == tempPtr->nextFree){
-			printf("NEXT FREE EQUALS ITSELF. TERMINATING EARLY\n");
-			exit(1);
-		}
-		tempPtr = tempPtr -> nextFree;
-	}
-	printf("\n");
+	//freeiteration();
 
 	return NULL;
 	
@@ -870,8 +662,8 @@ double utilization() {
 	int start = 0;
 	while (((void*)curr) <= (((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)))) {
 
-		printf("curr->free = %d\n", curr->free);
-		printf("curr->size = %d\n", curr->size);
+		//printf("curr->free = %d\n", curr->free);
+		//printf("curr->size = %d\n", curr->size);
 
 		if (curr->free != FREE && curr->free != DOUBLE_FREE && curr->free != ALLOCATED) {
 			printf("entered garbage data at location: %zd\n", (uintptr_t)curr-(uintptr_t)memory);
@@ -887,9 +679,9 @@ double utilization() {
 			numFreeBlocks++;
 			printf("add of free curr = %zd\n", (uintptr_t)curr - (uintptr_t)memory);
 		}
-		printf("add of curr = %zd\n", (uintptr_t)curr);
-		printf("add of end = %zd\n", (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)));
-		printf("curr->size = %d\n", curr->size);
+		//printf("add of curr = %zd\n", (uintptr_t)curr);
+		//printf("add of end = %zd\n", (uintptr_t)((void*)memory + HEAPSIZE - MEMSIZE - sizeof(memBlock)));
+		//printf("curr->size = %d\n", curr->size);
 		s += curr->size;
 		curr = (memBlock*)((void*)curr + curr->size);
 		start = 1;
@@ -921,6 +713,7 @@ double utilization() {
 	double ans = memoryUsed / spaceUsed;
 	printf("ratio = %f\n", ans);
 	printf("s = %d\n", s);
+	printf("lastUsed address = %zd\n", (uintptr_t)lastUsed - (uintptr_t)memory);
 	freeiteration();
 	//memBlock* nword = (void*)memory + 640;
 	//printf("second free block size = %d | add of prevFree = %zd | add of nextFree = %zd\n", nword->size, (uintptr_t)(nword->prevFree)-(uintptr_t)memory, (uintptr_t)(nword->nextFree)-(uintptr_t)memory);
