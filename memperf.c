@@ -26,7 +26,7 @@ To-Do:
 int main(int argc, char* argv[]) {
 	myinit(0);
 	time_t seed;
-	int amt = 100000;
+	int amt = 100;
 	//srand((unsigned) time(&seed));
 	//srand(1637370771); first one
 	//srand(1637451443);
@@ -34,12 +34,15 @@ int main(int argc, char* argv[]) {
 	//srand(1637460495); i think this one has the bad free list
 	//srand(1637344124);
 	//srand(1637346510);
-	srand(1637519455);
+	//srand(1637519455);
+	//srand(1637524311);
+	srand(1637533710);
 	printf("SEED: %lld\n", (long long) seed);
 
 	//srand(1637269614);
 	//srand(1637342748);
 	//srand(1637346510);
+	//srand(1637522666);
 	void* pointers[20];
 	//if(!pointers[0]){
 	//	printf("NULL");
@@ -60,9 +63,9 @@ int main(int argc, char* argv[]) {
 	// myfree(ptrh);
 
 
-	for( int n = 0 ; n < 2*amt; n++ ) {
+	for( int n = 0 ; n < amt; n++ ) {
 		printf("iteration # = %d\n", n);
-		int randGen = rand() % 2;
+		int randGen = rand() % 3;
 		int pointerIndex = rand()%20;
 		int size = (rand()%256)+1;
 		//int randGen = 0;
