@@ -6,14 +6,14 @@
 #include <time.h>
 
 #include "mymalloc.h"
-#define NUM_POINTERS 20
+#define NUM_POINTERS 3000
 
-const int amt = 5000;
-void* pointers[20];
+const int amt = 1000000;
+void* pointers[NUM_POINTERS];
 
 void randomIteration() {
 	for (int n = 0; n < amt; n++) {
-		int randGen = rand() % 3;
+		int randGen = rand() % NUM_POINTERS;
 		int pointerIndex = rand()%20;
 		int size = (rand()%256)+1;
 		if(randGen == 0){
@@ -53,7 +53,6 @@ int main(int argc, char* argv[]) {
 	double bestFitTP;
 
 	myinit(0);
-	//printf("SEED: %lld\n", (long long) seed);
 	begin = time(NULL);
 	randomIteration();
 	end = time(NULL);
@@ -63,7 +62,6 @@ int main(int argc, char* argv[]) {
 	resetPointers();
 
 	myinit(1);
-	//printf("SEED: %lld\n", (long long) seed);
 	begin = time(NULL);
 	randomIteration();
 	end = time(NULL);
@@ -73,7 +71,6 @@ int main(int argc, char* argv[]) {
 	resetPointers();
 
 	myinit(2);
-	//printf("SEED: %lld\n", (long long) seed);
 	begin = time(NULL);
 	randomIteration();
 	end = time(NULL);
