@@ -648,6 +648,8 @@ void* myrealloc(void* ptr, size_t size) {
 
 void mycleanup() {
 	free(memory);
+	freeHead = NULL;
+	lastUsed = NULL;
 }
 
 double utilization() {
